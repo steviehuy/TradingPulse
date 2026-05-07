@@ -169,7 +169,6 @@
             <th onclick="wlSort('price')">Price <span id="s-price"></span></th>
             <th onclick="wlSort('chg')">CHG <span id="s-chg"></span></th>
             <th onclick="wlSort('pct')">% <span id="s-pct"></span></th>
-            <th onclick="wlSort('signal')">Signal <span id="s-signal"></span></th>
             <th onclick="wlSort('edge')">Edge <span id="s-edge"></span></th>
             <th onclick="wlSort('rsi')">RSI <span id="s-rsi"></span></th>
             <th onclick="wlSort('macd')">MACD <span id="s-macd"></span></th>
@@ -410,7 +409,6 @@ function renderWatchlist(){
   else if(wlSortCol==='price') data.sort((a,b)=>wlSortAsc?a.q.price-b.q.price:b.q.price-a.q.price);
   else if(wlSortCol==='chg') data.sort((a,b)=>wlSortAsc?a.q.change-b.q.change:b.q.change-a.q.change);
   else if(wlSortCol==='pct') data.sort((a,b)=>wlSortAsc?a.q.pct-b.q.pct:b.q.pct-a.q.pct);
-  else if(wlSortCol==='signal') data.sort((a,b)=>{ const d=sigOrd[sc(a.t).sig]-sigOrd[sc(b.t).sig]; return wlSortAsc?d:-d; });
   else if(wlSortCol==='edge') data.sort((a,b)=>{ const edgeOrd={'LONG':2,'WAIT':1,'SHORT':0}; const d=edgeOrd[calcEdge(a.t).signal]-edgeOrd[calcEdge(b.t).signal]; return wlSortAsc?d:-d; });
   else if(wlSortCol==='rsi') data.sort((a,b)=>wlSortAsc?sc(a.t).rsi-sc(b.t).rsi:sc(b.t).rsi-sc(a.t).rsi);
   else if(wlSortCol==='macd') data.sort((a,b)=>wlSortAsc?(sc(a.t).macdBull?1:0)-(sc(b.t).macdBull?1:0):(sc(b.t).macdBull?1:0)-(sc(a.t).macdBull?1:0));
@@ -419,7 +417,7 @@ function renderWatchlist(){
   else if(wlSortCol==='bs') data.sort((a,b)=>{ const as=sc(a.t),bs2=sc(b.t); const av=as.b/(as.b+as.s||1),bv=bs2.b/(bs2.b+bs2.s||1); return wlSortAsc?av-bv:bv-av; });
 
   // Update sort indicators
-  ['ticker','price','chg','pct','signal','edge','rsi','macd','trend','cross','bs'].forEach(col=>{
+  ['ticker','price','chg','pct','edge','rsi','macd','trend','cross','bs'].forEach(col=>{
     const el=document.getElementById('s-'+col); if(el) el.textContent=wlSortCol===col?(wlSortAsc?'▲':'▼'):'';
   });
 
@@ -451,7 +449,6 @@ function renderWatchlist(){
       <td style="text-align:right;font-weight:600;color:${pc}">$${q.price.toFixed(2)}</td>
       <td style="text-align:right;color:${pc};font-size:.8rem">${up?'+':''}${q.change.toFixed(2)}</td>
       <td style="text-align:right;color:${pc};font-size:.8rem;font-weight:700">${up?'+':''}${q.pct.toFixed(2)}%</td>
-      <td>${sigEl}</td>
       <td>${renderEdge(t)}</td>
       <td style="color:${rsiCol};font-weight:${s.rsi>70||s.rsi<30?'700':'400'};font-size:.8rem">${s.rsi.toFixed(1)}</td>
       <td>${macdEl}</td>
@@ -459,7 +456,7 @@ function renderWatchlist(){
       <td>${crossEl}</td>
       <td style="color:${bsCol};font-size:.75rem">${s.b}/${s.s} <span style="opacity:.7">${bsPct}%</span></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="11" style="padding:1rem;text-align:center;color:var(--muted)">No tickers</td></tr>`;
+  }).join('') || `<tr><td colspan="10" style="padding:1rem;text-align:center;color:var(--muted)">No tickers</td></tr>`;
 }
 
 // ── Fetch real quotes ──────────────────────────────────────────
