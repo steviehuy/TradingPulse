@@ -624,8 +624,12 @@ async function fetchNews(){
       for(const a of allArticles){ const norm=a.headline.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,60); if(seenH.has(norm)){const ex=seenH.get(norm);if(!ex.tickers.includes(a.ticker))ex.tickers.push(a.ticker);}else{const e={...a,tickers:[a.ticker]};seenH.set(norm,e);deduped.push(e);} }
       allNews=deduped.sort((a,b)=>b.datetime-a.datetime);
       renderNews(); renderAlerts(); showToast(`📰 ${allNews.length} live articles loaded`);
+    } else {
+      loadMockNews();
     }
-  }catch(e){}
+  }catch(e){
+    loadMockNews();
+  }
 }
 
 // ── AI Predictions ─────────────────────────────────────────────
