@@ -185,15 +185,13 @@
   <!-- NEWS -->
   <div class="news-panel" id="news-panel"><div class="empty-state">Loading news…</div></div>
   <div class="drag-handle" id="drag-2"></div>
-  <!-- TRADE ALERTS -->
+  <!-- EDGE ANALYSIS -->
   <div class="right-sidebar" id="alerts-panel" style="width:260px;flex-shrink:0">
-    <div class="sec-hdr" onclick="toggleSec('alerts-body','chev-a')">
-      <span>Trade Alerts <span class="sec-count" id="alert-count" style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid rgba(239,68,68,.25)"></span></span>
-      <span id="chev-a">▲</span>
+    <div class="sec-hdr">
+      <span>Edge Analysis</span>
     </div>
-    <div id="alerts-body">
-      <div style="padding:.3rem .9rem;font-size:.6em;font-weight:700;text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid;color:#f87171;background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.15)">🔴 Watch Now</div>
-      <div id="watch-list"><div class="loading-row">Loading…</div></div>
+    <div id="alerts-body" style="padding:.5rem .9rem;overflow-y:auto;font-size:.75em">
+      <div style="color:var(--muted);text-align:center">Select a ticker</div>
     </div>
   </div>
   <div class="drag-handle" id="drag-3"></div>
@@ -531,16 +529,18 @@ function renderNews(){
   }).join('');
 }
 function toggleRel(gi){ const el=document.getElementById('rel-'+gi); if(!el)return; el.style.display=el.style.display==='none'?'flex':'none'; }
-function renderAlerts(){
-  const now=Math.floor(Date.now()/1000);
-  const items=[];
-  allTickers().forEach(t=>{ const a=allNews.find(n=>n.ticker===t&&n.impact==='high'&&(now-n.datetime)<=7200); if(a)items.push({t,a}); });
-  items.sort((x,y)=>y.a.datetime-x.a.datetime);
-  const countEl=document.getElementById('alert-count');
-  countEl.textContent=items.length; countEl.style.display=items.length?'':'none';
-  const wl=document.getElementById('watch-list');
-  if(!items.length){wl.innerHTML='<div class="loading-row">No high-impact alerts in last 2h</div>';return;}
-  wl.innerHTML=items.map(({t,a})=>{ const move=detectMove(a.headline||'',a.summary||'',a.sentiment); const bull=move>0; return`<div class="alert-card"><div class="alert-top"><span class="alert-ticker">${t}</span><span class="tag high">HIGH</span><span class="alert-ago">${timeAgo(a.datetime)}</span></div><div class="alert-headline">${esc(a.headline.slice(0,90))}${a.headline.length>90?'…':''}</div>${move!==null?`<span class="impact-pill ${bull?'pill-bull':'pill-bear'}">${bull?'▲':'▼'} ${bull?'+':'-'}${Math.abs(move).toFixed(1)}% expected</span>`:''}</div>`; }).join('');
+function renderEdgeAnalysis(ticker){
+  const edge=calcEdge(ticker);
+  const s=scoreFromQuote(ticker)||{rsi:50,macdBull:false,emaBull:false,goldenX:false};
+  const body=document.getElementById('alerts-body');
+  if(!body) return;
+  const rsiVal=s.rsi.toFixed(0);
+  const macdVal=s.macdBull?'🟢 Bullish':'🔴 Bearish';
+  const trendVal=s.emaBull?'🟢 Bullish':'🔴 Bearish';
+  const crossVal=s.goldenX?'🟢 Golden':'🔴 Death';
+  const sig=edge.signal;
+  const sigEmoji=sig==='LONG'?'🟢':sig==='SHORT'?'🔴':'⚪';
+  body.innerHTML='<div style="margin-bottom:1rem"><div style="font-weight:700;font-size:.95em;color:#3b82f6">'+ticker+'</div><div style="font-size:1.2em;font-weight:700;margin:.4rem 0">'+sigEmoji+' '+sig+'</div><div style="color:var(--muted);font-size:.7em">Conf: '+edge.confidence+'/8</div></div><div style="border-top:1px solid var(--border);padding-top:.6rem"><div style="margin-bottom:.4rem"><strong>RSI ('+rsiVal+')</strong><br>'+(s.rsi<30?'🟢 Oversold':s.rsi>70?'🔴 Overbought':'⚪ Neutral')+'</div><div style="margin-bottom:.4rem"><strong>MACD</strong><br>'+macdVal+'</div><div style="margin-bottom:.4rem"><strong>Trend</strong><br>'+trendVal+'</div><div><strong>Cross</strong><br>'+crossVal+'</div></div>';
 }
 
 // ── Earnings ───────────────────────────────────────────────────
@@ -592,7 +592,7 @@ function loadMockNews(){
     {id:9,ticker:'AMD',tickers:['AMD'],headline:'Stock Market Today, May 6: AMD Surges After Q1 Beat and Strong Q2 Data Center Outlook',summary:'AMD data center revenue jumped 57% giving investors hard evidence of demand.',source:'CNBC',impact:'high',sentiment:'bullish',datetime:NOW-2280,url:'#',social:false},
     {id:10,ticker:'GOOGL',tickers:['GOOGL'],headline:'Google DeepMind announces breakthrough in protein structure prediction',summary:'The new model can predict protein interactions with unprecedented accuracy.',source:'Reuters',impact:'medium',sentiment:'bullish',datetime:NOW-8100,url:'#',social:false}
   ];
-  renderNews(); renderAlerts();
+  renderNews();
 }
 async function fetchNews(){
   try{
@@ -623,7 +623,7 @@ async function fetchNews(){
       const seenH=new Map(); const deduped=[];
       for(const a of allArticles){ const norm=a.headline.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,60); if(seenH.has(norm)){const ex=seenH.get(norm);if(!ex.tickers.includes(a.ticker))ex.tickers.push(a.ticker);}else{const e={...a,tickers:[a.ticker]};seenH.set(norm,e);deduped.push(e);} }
       allNews=deduped.sort((a,b)=>b.datetime-a.datetime);
-      renderNews(); renderAlerts(); showToast(`📰 ${allNews.length} live articles loaded`);
+      renderNews(); showToast(`📰 ${allNews.length} live articles loaded`);
     } else {
       loadMockNews();
     }
@@ -650,7 +650,7 @@ function removeTicker(t){
   if(DEFAULT_TICKERS.includes(t)){if(!hiddenTickers.includes(t))hiddenTickers.push(t);saveHidden();}
   else{customTickers=customTickers.filter(x=>x!==t);saveCustom();}
   delete quotes[t]; if(activeTicker===t)activeTicker='ALL';
-  renderTabs(); renderPriceBar(); renderWatchlist(); renderNews(); renderAlerts(); renderEarnings();
+  renderTabs(); renderPriceBar(); renderWatchlist(); renderNews(); renderEarnings();
   showToast(`Removed ${t}`);
 }
 function addWatchlistTicker(){
@@ -671,7 +671,7 @@ function addTicker(){
   renderTabs(); renderPriceBar(); renderWatchlist();
   fetchRealQuote(raw); showToast(`✅ Added ${raw}`);
 }
-function setTicker(t){ activeTicker=t; renderTabs(); renderNews(); }
+function setTicker(t){ activeTicker=t; renderTabs(); renderNews(); renderEdgeAnalysis(t); }
 function setFeed(m,btn){ feedMode=m; document.querySelectorAll('.feed-btn').forEach(b=>b.classList.toggle('active',b===btn)); renderNews(); }
 function toggleF(btn,type,key){ const set=type==='impact'?activeImpacts:activeSents; set.has(key)?set.delete(key):set.add(key); btn.classList.toggle('active',set.has(key)); renderNews(); }
 function toggleSec(bodyId,chevId){ const body=document.getElementById(bodyId),chev=document.getElementById(chevId); if(!body)return; const c=body.classList.toggle('collapsed'); if(chev)chev.textContent=c?'▼':'▲'; }
