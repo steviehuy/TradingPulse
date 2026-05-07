@@ -1,0 +1,128 @@
+{
+  "timestamp": "2026-05-06T00:00:00Z",
+  "data_source": "TradingView Signal Dashboard",
+  "signals": [
+    {
+      "ticker": "AAPL",
+      "price": 287.46,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 54.1,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "3/1",
+      "reasoning": "RSI at midpoint (54.1), MACD bullish but trend is bearish with death cross - conflicting signals warrant caution"
+    },
+    {
+      "ticker": "MSFT",
+      "price": 413.84,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 54.5,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "3/1",
+      "reasoning": "Similar to AAPL - bullish MACD but bearish trend with death cross, RSI neutral"
+    },
+    {
+      "ticker": "NVDA",
+      "price": 207.76,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 62.1,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "2/2",
+      "indicators_insight": "RSI approaching overbought (62.1), bullish MACD offset by bearish trend"
+    },
+    {
+      "ticker": "AMZN",
+      "price": 275.03,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 34.1,
+        "macd": "Bear",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "2/2",
+      "reasoning": "Weak signal - RSI low (34.1), MACD bearish, trend bearish, death cross. Waiting for reversal signals"
+    },
+    {
+      "ticker": "GOOGL",
+      "price": 397.84,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 60.6,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "2/2",
+      "reasoning": "Divergence between bullish MACD (60.6 RSI) and bearish trend - waiting for confirmation"
+    },
+    {
+      "ticker": "META",
+      "price": 612.58,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 45.4,
+        "macd": "Bear",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "1/3",
+      "reasoning": "Bearish setup - MACD and trend both bearish, RSI neutral (45.4), heavy sell pressure (1/3)"
+    },
+    {
+      "ticker": "TSLA",
+      "price": 398.63,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 45.9,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "3/1",
+      "reasoning": "Bullish buy ratio (3/1) but conflicting with bearish trend and death cross - awaiting confirmation"
+    },
+    {
+      "ticker": "QQQ",
+      "price": 695.61,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 71.3,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "2/3",
+      "reasoning": "RSI overbought (71.3) despite bullish MACD - trend weakness and death cross suggest caution"
+    },
+    {
+      "ticker": "SPY",
+      "price": 733.77,
+      "signal": "WAIT",
+      "indicators": {
+        "rsi": 59.1,
+        "macd": "Bull",
+        "trend": "Bear",
+        "cross": "Death"
+      },
+      "buy_sell_ratio": "2/2",
+      "reasoning": "Balanced indicators but bearish trend and death cross dominate - neutral positioning until trend reversal"
+    }
+  ],
+  "summary": {
+    "all_signals": "WAIT",
+    "market_condition": "Bearish on all tickers - death crosses and bearish trends across the board despite some bullish MACD readings",
+    "observation": "Market showing mixed signals with MACD bullish but trend bearish and death crosses on all analyzed tickers. Risk/reward currently unfavorable for new longs. Monitor for trend reversal signals."
+  }
+}

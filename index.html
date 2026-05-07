@@ -446,6 +446,7 @@ let customTickers=JSON.parse(localStorage.getItem('tp_tickers')||'[]');
 function saveCustom(){localStorage.setItem('tp_tickers',JSON.stringify(customTickers));}
 let allNews=[],quotes={},earningsData=[],activeTicker="ALL",feedMode="news";
 let activeImpacts=new Set(["high","medium","low"]),activeSents=new Set(["bullish","neutral","bearish"]);
+let tvSignals={}; // TradingView signals from signals.json
 function initQuotes(){
   allTickers().forEach(t=>{
     const base=BASE_PRICES[t]||100;
@@ -841,7 +842,23 @@ function renderMarketPulse(){
     const recentBear  = recentBearNews.length;
     const p = dailyPredictions[t];
     let signal='', signalClass='neutral', detail='', score=0, triggerTime=null;
-    if(pct >= 1.5 && recentBull >= 1){
+    // Check TradingView signals first (highest priority)
+    if(tvSignals[t]){
+      const tv=tvSignals[t];
+      if(tv.signal==='BUY'){
+        signal='📈 TV BUY'; signalClass='momentum-up';
+        detail=`TradingView: RSI ${tv.rsi} · MACD ${tv.macd} · Trend ${tv.trend}`;
+        score=80; triggerTime=Math.floor(Date.now()/1000);
+      }else if(tv.signal==='SELL'){
+        signal='📉 TV SELL'; signalClass='momentum-dn';
+        detail=`TradingView: RSI ${tv.rsi} · MACD ${tv.macd} · Trend ${tv.trend}`;
+        score=80; triggerTime=Math.floor(Date.now()/1000);
+      }else{
+        signal='⏳ TV WAIT'; signalClass='neutral';
+        detail=`TradingView: RSI ${tv.rsi} · MACD ${tv.macd} · ${tv.cross} cross`;
+        score=30; triggerTime=null;
+      }
+    }else if(pct >= 1.5 && recentBull >= 1){
       signal='🚀 Momentum Long'; signalClass='momentum-up';
       detail=`Up ${pct.toFixed(1)}% · ${recentBull} bullish catalyst${recentBull>1?'s':''}`;
       score=pct+recentBull*2; triggerTime=recentBullNews[0].datetime;
@@ -1036,6 +1053,29 @@ function fetchEarnings(){
   loadMockEarnings();
   return Promise.resolve();
 }
+
+async function fetchTradingViewSignals(){
+  try{
+    const res=await fetch('https://raw.githubusercontent.com/steviehuy/tradingview-mcp/main/signals.json');
+    if(!res.ok)throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    tvSignals={};
+    data.signals.forEach(s=>{
+      tvSignals[s.ticker]={
+        signal:s.signal,
+        price:s.price,
+        rsi:s.indicators.rsi,
+        macd:s.indicators.macd,
+        trend:s.indicators.trend,
+        cross:s.indicators.cross,
+        ratio:s.buy_sell_ratio
+      };
+    });
+    renderMarketPulse();
+  }catch(err){
+    console.log('TradingView signals not available');
+  }
+}
 function loadMockNews(){const NOW=Math.floor(Date.now()/1000);allNews=[{id:1,ticker:"QQQ",tickers:["QQQ"],headline:"Dow falls 400 points as oil jumps on fear Iran conflict set to flare up again",summary:"The S&P 500 and Nasdaq are coming off a solid week having notched fresh records on Friday.",source:"CNBC",impact:"high",sentiment:"bullish",datetime:NOW-420,url:"#",social:false},{id:2,ticker:"AMZN",tickers:["AMZN"],headline:"Amazon opens up its logistics network to other businesses in new growth push",summary:"Amazon will allow companies across industries to use its supply chain network.",source:"CNBC",impact:"low",sentiment:"bullish",datetime:NOW-660,url:"#",social:false},{id:3,ticker:"AMD",tickers:["AMD","PLTR"],headline:"The market next test could come down to two stocks",summary:"AMD and Palantir results will drive the market this week.",source:"CNBC",impact:"low",sentiment:"bullish",datetime:NOW-2280,url:"#",social:false},{id:4,ticker:"NVDA",tickers:["NVDA"],headline:"Nvidia unveils next-generation Blackwell Ultra chips promising 50x AI performance",summary:"CEO Jensen Huang announced the new architecture at the annual GTC developer conference.",source:"Reuters",impact:"high",sentiment:"bullish",datetime:NOW-3000,url:"#",social:false},{id:5,ticker:"AAPL",tickers:["AAPL"],headline:"Apple just gave a clue that a big AI acquisition may be in the cards",summary:"Recent job postings and executive comments suggest Apple is preparing a major AI move.",source:"CNBC",impact:"high",sentiment:"bullish",datetime:NOW-3900,url:"#",social:false},{id:6,ticker:"SPY",tickers:["SPY"],headline:"Fed signals patience on rate cuts as inflation remains above target",summary:"Federal Reserve officials indicated they need more evidence of cooling inflation before cutting rates.",source:"WSJ",impact:"high",sentiment:"bearish",datetime:NOW-5400,url:"#",social:false},{id:7,ticker:"META",tickers:["META"],headline:"Meta AI investments paying off as ad revenue surges past expectations",summary:"Meta reported stronger-than-expected ad revenue growth driven by AI-powered targeting.",source:"Bloomberg",impact:"medium",sentiment:"bullish",datetime:NOW-4200,url:"#",social:false},{id:8,ticker:"TSLA",tickers:["TSLA"],headline:"Tesla delivery numbers disappoint as competition intensifies",summary:"Tesla delivered fewer vehicles than expected amid rising competition from BYD and other EV makers.",source:"Reuters",impact:"high",sentiment:"bearish",datetime:NOW-4500,url:"#",social:false},{id:9,ticker:"MSFT",tickers:["MSFT"],headline:"Microsoft Azure revenue beats estimates as cloud growth accelerates",summary:"Azure grew 31% year-over-year beating analyst expectations of 28% growth.",source:"Bloomberg",impact:"high",sentiment:"bullish",datetime:NOW-7200,url:"#",social:false},{id:10,ticker:"GOOGL",tickers:["GOOGL"],headline:"Google DeepMind announces breakthrough in protein structure prediction",summary:"The new model can predict protein interactions with unprecedented accuracy opening new drug discovery possibilities.",source:"Reuters",impact:"medium",sentiment:"bullish",datetime:NOW-8100,url:"#",social:false}];renderNews();renderAlerts();renderMarketPulse();}
 // ETFs and indexes don't have earnings
 const NO_EARNINGS=['SPY','QQQ','DIA','IWM','VTI','VOO','VXX','GLD','SLV','TLT','XLF','XLE','XLK','XLV','XLU','ARKK','SQQQ','TQQQ'];
@@ -1165,7 +1205,7 @@ function connectAlpacaWS(){
 initQuotes();renderPriceBar();renderTabs();renderWatchlist();updateMarketStatusBadge();
 // Load mock data immediately so nothing is blank while live data loads
 loadMockNews();
-fetchNews();fetchEarnings().then(()=>fetchEarningsResults());fetchDailyPredictions();renderMarketPulse();
+fetchNews();fetchEarnings().then(()=>fetchEarningsResults());fetchDailyPredictions();fetchTradingViewSignals();renderMarketPulse();
 fetchAllQuotes(); // immediate first load
 setInterval(fetchAllQuotes, 20000); // Finnhub refresh every 20s (WebSocket handles live ticks)
 setInterval(fetchEarningsResults, 5*60*1000); // check for new results every 5min
