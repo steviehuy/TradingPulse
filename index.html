@@ -170,6 +170,7 @@
             <th onclick="wlSort('chg')">CHG <span id="s-chg"></span></th>
             <th onclick="wlSort('pct')">% <span id="s-pct"></span></th>
             <th onclick="wlSort('signal')">Signal <span id="s-signal"></span></th>
+            <th onclick="wlSort('edge')">Edge <span id="s-edge"></span></th>
             <th onclick="wlSort('rsi')">RSI <span id="s-rsi"></span></th>
             <th onclick="wlSort('macd')">MACD <span id="s-macd"></span></th>
             <th onclick="wlSort('trend')">Trend <span id="s-trend"></span></th>
@@ -311,6 +312,62 @@ function updatePriceHistory(){
   });
 }
 
+// ── EDGE Column: Multi-Timeframe Analysis ──────────────────────
+function calcEdge(ticker){
+  const s=scoreFromQuote(ticker)||{sig:'WAIT',rsi:50,macdBull:false,emaBull:false,goldenX:false,b:0,s:0};
+  const q=quotes[ticker]||{pct:0,price:0};
+  const hist=priceHistory[ticker]||[];
+
+  // Count alignment: RSI + MACD + Trend agreement
+  let bullCount=0,bearCount=0;
+
+  // RSI signal: below 30 = bullish, above 70 = bearish, 30-70 = neutral
+  if(s.rsi<30) bullCount+=2;
+  else if(s.rsi>70) bearCount+=2;
+  else if(s.rsi<45) bullCount+=1;
+  else if(s.rsi>55) bearCount+=1;
+
+  // MACD signal
+  if(s.macdBull) bullCount+=2; else bearCount+=2;
+
+  // Trend signal (EMA cross)
+  if(s.emaBull) bullCount+=2; else bearCount+=2;
+
+  // Check for support/resistance: price near extremes suggests momentum
+  if(hist.length>=20){
+    const recent=hist.slice(-20);
+    const high=Math.max(...recent);
+    const low=Math.min(...recent);
+    const range=high-low;
+    const pctFromLow=range>0?(q.price-low)/range*100:50;
+
+    // Near resistance (top 20% of range) with bearish setup
+    if(pctFromLow>80&&bearCount>bullCount) bearCount+=1;
+    // Near support (bottom 20% of range) with bullish setup
+    else if(pctFromLow<20&&bullCount>bearCount) bullCount+=1;
+  }
+
+  // Golden cross bonus
+  if(s.goldenX) bullCount+=1;
+
+  // Price momentum
+  if(q.pct>1.5) bullCount+=1;
+  else if(q.pct<-1.5) bearCount+=1;
+
+  // Determine signal: need strong alignment
+  const signal=bullCount>=7?'LONG':bearCount>=7?'SHORT':'WAIT';
+  const confidence=Math.max(bullCount,bearCount);
+
+  return {signal,bullCount,bearCount,confidence};
+}
+
+function renderEdge(ticker){
+  const edge=calcEdge(ticker);
+  const emoji=edge.signal==='LONG'?'🟢':edge.signal==='SHORT'?'🔴':'⚪';
+  const color=edge.signal==='LONG'?'#10b981':edge.signal==='SHORT'?'#ef4444':'var(--muted)';
+  return `<span style="color:${color};font-weight:700;font-size:.85rem">${emoji} ${edge.signal}</span>`;
+}
+
 // ── Render price bar ───────────────────────────────────────────
 function renderPriceBar(){
   const tickers=allTickers();
@@ -354,6 +411,7 @@ function renderWatchlist(){
   else if(wlSortCol==='chg') data.sort((a,b)=>wlSortAsc?a.q.change-b.q.change:b.q.change-a.q.change);
   else if(wlSortCol==='pct') data.sort((a,b)=>wlSortAsc?a.q.pct-b.q.pct:b.q.pct-a.q.pct);
   else if(wlSortCol==='signal') data.sort((a,b)=>{ const d=sigOrd[sc(a.t).sig]-sigOrd[sc(b.t).sig]; return wlSortAsc?d:-d; });
+  else if(wlSortCol==='edge') data.sort((a,b)=>{ const edgeOrd={'LONG':2,'WAIT':1,'SHORT':0}; const d=edgeOrd[calcEdge(a.t).signal]-edgeOrd[calcEdge(b.t).signal]; return wlSortAsc?d:-d; });
   else if(wlSortCol==='rsi') data.sort((a,b)=>wlSortAsc?sc(a.t).rsi-sc(b.t).rsi:sc(b.t).rsi-sc(a.t).rsi);
   else if(wlSortCol==='macd') data.sort((a,b)=>wlSortAsc?(sc(a.t).macdBull?1:0)-(sc(b.t).macdBull?1:0):(sc(b.t).macdBull?1:0)-(sc(a.t).macdBull?1:0));
   else if(wlSortCol==='trend') data.sort((a,b)=>wlSortAsc?(sc(a.t).emaBull?1:0)-(sc(b.t).emaBull?1:0):(sc(b.t).emaBull?1:0)-(sc(a.t).emaBull?1:0));
@@ -361,7 +419,7 @@ function renderWatchlist(){
   else if(wlSortCol==='bs') data.sort((a,b)=>{ const as=sc(a.t),bs2=sc(b.t); const av=as.b/(as.b+as.s||1),bv=bs2.b/(bs2.b+bs2.s||1); return wlSortAsc?av-bv:bv-av; });
 
   // Update sort indicators
-  ['ticker','price','chg','pct','signal','rsi','macd','trend','cross','bs'].forEach(col=>{
+  ['ticker','price','chg','pct','signal','edge','rsi','macd','trend','cross','bs'].forEach(col=>{
     const el=document.getElementById('s-'+col); if(el) el.textContent=wlSortCol===col?(wlSortAsc?'▲':'▼'):'';
   });
 
@@ -394,13 +452,14 @@ function renderWatchlist(){
       <td style="text-align:right;color:${pc};font-size:.8rem">${up?'+':''}${q.change.toFixed(2)}</td>
       <td style="text-align:right;color:${pc};font-size:.8rem;font-weight:700">${up?'+':''}${q.pct.toFixed(2)}%</td>
       <td>${sigEl}</td>
+      <td>${renderEdge(t)}</td>
       <td style="color:${rsiCol};font-weight:${s.rsi>70||s.rsi<30?'700':'400'};font-size:.8rem">${s.rsi.toFixed(1)}</td>
       <td>${macdEl}</td>
       <td>${trendEl}</td>
       <td>${crossEl}</td>
       <td style="color:${bsCol};font-size:.75rem">${s.b}/${s.s} <span style="opacity:.7">${bsPct}%</span></td>
     </tr>`;
-  }).join('') || `<tr><td colspan="10" style="padding:1rem;text-align:center;color:var(--muted)">No tickers</td></tr>`;
+  }).join('') || `<tr><td colspan="11" style="padding:1rem;text-align:center;color:var(--muted)">No tickers</td></tr>`;
 }
 
 // ── Fetch real quotes ──────────────────────────────────────────
